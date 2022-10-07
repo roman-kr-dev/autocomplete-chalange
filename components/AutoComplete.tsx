@@ -1,23 +1,26 @@
 import styles from '../styles/Autocomplete.module.css';
 import React from 'react';
-import { AutoCompleteList } from './auto-complete-list';
+import { AutoCompleteList } from './autocomplete-list';
+import {
+  setItemsAction,
+  useAutocompleteContext,
+  setValueAction,
+  useDebouncedValue,
+  setErrorAction,
+} from '../model';
 
-interface AutoCompleteProp {
-  onItemClick(item: string): void;
-}
-
-const AutoComplete: React.FC<AutoCompleteProp> = ({ onItemClick }) => {
+const AutoComplete: React.FC = () => {
+  const { state: { value }, dispatch } = useAutocompleteContext();
   const abortRef = React.useRef<null | AbortController>();
-  const [inputValue, setInputValue] = React.useState('');
-  const [items, setItems] = React.useState([]);
-  const [error, setError] = React.useState<Error | null>(null)
+  const debouncedValue = useDebouncedValue(value, 250);
+
   function handleChange({ target }: React.ChangeEvent<HTMLInputElement>) {
-    setInputValue(target.value);
+    setValueAction(dispatch, target.value);
   }
 
   React.useEffect(() => {
-    if (!inputValue) {
-      setItems([]);
+    if (!debouncedValue) {
+      setItemsAction(dispatch, { items: [] });
       return
     };
 
@@ -28,26 +31,23 @@ const AutoComplete: React.FC<AutoCompleteProp> = ({ onItemClick }) => {
     abortRef.current = new AbortController();
 
     fetch(
-      `/api/autocomplete?q=${encodeURIComponent(inputValue)}&delay=1`,
+      `/api/autocomplete?q=${encodeURIComponent(debouncedValue)}&delay=1`,
       { signal: abortRef.current.signal },
     )
       .then(data => data.json())
-      .then(({ items }) => {
-        setError(null);
-        setItems(items)
+      .then(({ items }: { items: string[] }) => {
+        setItemsAction(dispatch, {
+          items,
+          error: null,
+        });
       })
       .catch((error: any) => {
         if (error.name !== 'AbortError') {
-          setError(error);
+          setErrorAction(dispatch, error)
         }
-      })
+      });
 
-  }, [inputValue])
-
-  const itemOnClick = React.useCallback((item: string) => {
-    setItems([])
-    onItemClick(item);
-  }, [onItemClick])
+  }, [debouncedValue, dispatch])
 
   return (
     <div className={styles.container}>
@@ -57,9 +57,9 @@ const AutoComplete: React.FC<AutoCompleteProp> = ({ onItemClick }) => {
         type="text"
         name="search"
         onChange={handleChange}
-        value={inputValue}
+        value={value}
       />
-      <AutoCompleteList error={error} items={items} itemOnClick={itemOnClick} />
+      <AutoCompleteList />
     </div>
   )
 }

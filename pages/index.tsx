@@ -2,17 +2,16 @@ import React from 'react';
 import type { NextPage } from 'next'
 import styles from '../styles/Home.module.css';
 import AutoComplete from '../components/AutoComplete';
+import { AutoCompleteProvider } from '../model';
+import { UserSelection } from '../components/user-selection';
 
 const Home: NextPage = () => {
-  const [userSelection, setUserSelection] = React.useState<string>('');
-  const onItemClick = React.useCallback((item: string) => {
-    setUserSelection(item);
-  }, []);
-
   return (
     <div className={styles.container}>
-      <AutoComplete onItemClick={onItemClick} />
-      <div className={styles.userSelection}>USER SELECTION HERE {userSelection || ''}</div>
+      <AutoCompleteProvider>
+        <AutoComplete />
+        <UserSelection />
+      </AutoCompleteProvider>
     </div>
   )
 }
